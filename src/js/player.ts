@@ -7,9 +7,9 @@ export class Player implements GameObject
     public position:Vector 
     private gameEngine:GameEngine;
 
-    private speed:number = 40;
-    public height:number = 30;
-    public width:number =10;
+    private speed:number = 100;
+    public height:number = 15;
+    public width:number = 70;
 
     constructor(position:Vector, gameEngine:GameEngine)
     {
@@ -20,21 +20,20 @@ export class Player implements GameObject
     update(time: number): void {
         if (this.gameEngine.leftKey)
         {
-            //move down
-            this.position.y += time/1000 * this.speed 
+            this.position.x -= time/1000 * this.speed 
         }
         if (this.gameEngine.rightKey)
         {
-            //move up
-            this.position.y -= time/1000 * this.speed
+            this.position.x += time/1000 * this.speed
         }
     }
 
     draw(ctx: CanvasRenderingContext2D): void {
+        ctx.fillStyle = "#1b1b42";
         ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
     }
 
     onColliosion(other: GameObject): void {
-        // not doing anything at the moment...
+
     }
 }

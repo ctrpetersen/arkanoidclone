@@ -3,35 +3,45 @@ import { Framerate } from "./framerate";
 import { Vector } from "./vector";
 import { Player } from "./player";
 import { Ball } from "./ball";
+import { Wall } from "./wall";
+import { Block } from "./block";
 
-
-export class GameEngine
-{
+export class GameEngine {
     // items in the game
-    public ball:Ball;
-    public player1:Player;
- 
+    public ball: Ball;
+    public player1: Player;
+
     // canvas info
-    public canvasWidth:number = 400;
-    public canvasHeight:number = 600;
+    public canvasWidth: number = 400;
+    public canvasHeight: number = 600;
+
+    public score: number = 0;
 
     // keep track of key states
-    public leftKey:boolean;
-    public rightKey:boolean;
+    public leftKey: boolean;
+    public rightKey: boolean;
 
-    private canvas:HTMLCanvasElement;
-    private ctx:CanvasRenderingContext2D;
-    
-    public objects:GameObject[] = new Array<GameObject>();
+    // walls
+    public leftWall: Wall;
+    public rightWall: Wall;
+    public upWall: Wall;
+    public downWall: Wall;
+
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
+
+    public scoreView : HTMLSpanElement;
+
+    public objects: GameObject[] = new Array<GameObject>();
 
     private date: Date = new Date();
     private timeZero: number = this.date.getTime();
     private timeNow: number;
 
-    constructor()
-    {
-        this.canvas = <HTMLCanvasElement> document.getElementById("canvas");
+    constructor() {
+        this.canvas = <HTMLCanvasElement>document.getElementById("canvas");
         this.ctx = this.canvas.getContext("2d");
+        this.scoreView = document.getElementById("score");
 
         this.canvas.width = this.canvasWidth;
         this.canvas.height = this.canvasHeight;
@@ -40,19 +50,44 @@ export class GameEngine
         document.addEventListener('keydown', this.keyDown.bind(this));
 
         //this.objects.push(new Framerate(new Vector(10,10)));
-        
-        this.player1 = new Player(new Vector(20,10), this);
+
+        this.player1 = new Player(new Vector(this.canvasWidth / 2, this.canvasHeight - 40), this);
         this.objects.push(this.player1);
 
-        this.ball = new Ball(new Vector(this.canvasWidth/2, this.canvasHeight/2), this);
+
+        this.upWall = new Wall(new Vector(0, 0), 5, this.canvasWidth);
+        this.objects.push(this.upWall);
+
+        this.downWall = new Wall(new Vector(0, this.canvasHeight - 5), 5, this.canvasWidth);
+        this.objects.push(this.downWall);
+
+        this.leftWall = new Wall(new Vector(0, 0), this.canvasHeight, 5);
+        this.objects.push(this.leftWall);
+
+        this.rightWall = new Wall(new Vector(this.canvasWidth - 5, 0), this.canvasHeight, 5);
+        this.objects.push(this.rightWall);
+
+
+        //fill with blocks
+        for (var i = 0; i < 5; i++) {
+            for (var x = 0; x < 20; x++) {
+                this.objects.push(new Block(new Vector(x * 20, (i*20)+50), 20, 1, this))
+            }
+        }
+
+        this.objects.push(new Block(new Vector(x * 20, (i*20)+50), 20, 1, this))
+
+
+
+
+        this.ball = new Ball(new Vector(this.canvasWidth / 2, this.canvasHeight / 2), this);
         this.objects.push(this.ball);
 
         this.gameLoop();
     }
 
-    private keyDown(event:KeyboardEvent): void
-    {
-        if (event.repeat) {return};
+    private keyDown(event: KeyboardEvent): void {
+        if (event.repeat) { return };
         switch (event.keyCode) {
             case 37:
                 this.leftKey = true;
@@ -62,63 +97,61 @@ export class GameEngine
         }
     }
 
-    private keyUp(event: KeyboardEvent): void
-    {
+    private keyUp(event: KeyboardEvent): void {
         switch (event.keyCode) {
             case 37:
-                this.leftKey=false;
+                this.leftKey = false;
                 break;
             case 39:
-                this.rightKey=false;
+                this.rightKey = false;
                 break;
-        }   
-    } 
-    
-    // a very good explanation of how rectangular collision works: https://silentmatt.com/rectangle-intersection/
-    private Collide(a:GameObject, b:GameObject): boolean {
-        if (a.position.x < (b.position.x+b.width) &&
-            (a.position.x+a.width) > b.position.x &&
-            a.position.y < (b.position.y+a.height) &&
-            a.position.y+b.height > b.position.y)
-            {
-                return true;
-            }
-        
+        }
     }
 
-    // the main game loop
-    private gameLoop()
-    {
-        // clear the screen in every update
-        this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
+    private Collide(a: GameObject, b: GameObject): boolean {
+        if (a.position.x < b.position.x + b.width &&
+            a.position.x + a.width > b.position.x &&
+            a.position.y < b.position.y + b.height &&
+            a.height + a.position.y > b.position.y) {
+            return true;
+        }
+
+    }
+
+    private gameLoop() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.date = new Date();
         this.timeNow = this.date.getTime()
-        var time = this.timeNow-this.timeZero;
-        this.timeZero=this.timeNow;
+        var time = this.timeNow - this.timeZero;
+        this.timeZero = this.timeNow;
 
-        // run throght all objects
         this.objects.forEach(element => {
-            //all objects are testeted for collisions on all objects
-            this.objects.forEach(other => {  
-                if (element !== other)
-                {
-                    if (this.Collide(element, other))
-                    {
+            this.objects.forEach(other => {
+                if (element !== other) {
+                    if (this.Collide(element, other)) {
                         element.onColliosion(other);
                     }
                 }
             });
-            
-            //every element is updated
+
             element.update(time);
 
-            // every element is drawn on canvas
             element.draw(this.ctx);
         });
-        
+
+        //check if the ball flew off screen
+        if (!(this.ball.position.x < 0 + this.canvasWidth &&
+            this.ball.position.x + this.ball.width > 0 &&
+            this.ball.position.y < 0 + this.canvasHeight &&
+            this.ball.height + this.ball.position.y > 0)) {
+            this.ball.position.x = 50;
+            this.ball.position.y = 400;
+        }
+
         // call the main gamelop again (~60fps by default)
         window.requestAnimationFrame(this.gameLoop.bind(this));
+        this.scoreView.innerHTML = this.score.toString();
 
 
 
